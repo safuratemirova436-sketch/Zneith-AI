@@ -11,22 +11,21 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
     <style>
         body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
-        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .glass-card { background: rgba(31, 41, 55, 0.5); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-card { background: rgba(31, 41, 55, 0.6); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.08); }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col justify-between overflow-hidden relative">
 
-    <canvas id="bg-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
+    <canvas id="bg-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-30"></canvas>
 
     <!-- Header -->
-    <header class="relative z-10 glass px-6 py-4 flex justify-between items-center">
+    <header class="relative z-20 glass px-4 py-3 flex justify-between items-center shrink-0">
         <div class="flex items-center space-x-3">
-            <button id="btn-sidebar" class="text-gray-300 hover:text-white p-1 cursor-pointer">
+            <button id="btn-sidebar" class="text-gray-300 hover:text-white p-2 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Меню">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
             <div class="flex items-center space-x-2">
@@ -35,9 +34,9 @@
             </div>
         </div>
         
-        <div class="flex items-center space-x-3">
-            <button id="btn-login-google" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition cursor-pointer flex items-center space-x-1">
-                <span>Войти через Google</span>
+        <div class="flex items-center space-x-2">
+            <button id="btn-login-google" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition cursor-pointer">
+                Войти через Google
             </button>
             <button id="btn-new-chat" class="p-2 rounded-lg glass-card hover:bg-white/10 transition text-gray-300 hover:text-white cursor-pointer" title="Новый чат">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -51,44 +50,41 @@
         </div>
     </header>
 
-    <!-- Sidebar Overlay -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 hidden cursor-pointer"></div>
-    
-    <!-- Sidebar -->
-    <aside id="sidebar" class="fixed left-0 top-0 bottom-0 w-72 glass z-30 transform -translate-x-full transition-transform duration-300 flex flex-col p-4">
+    <!-- Sidebar Overlay & Sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden cursor-pointer"></div>
+    <aside id="sidebar" class="fixed left-0 top-0 bottom-0 w-72 glass z-40 transform -translate-x-full transition-transform duration-300 flex flex-col p-4 bg-gray-900">
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-semibold text-gray-200">История чатов</h2>
-            <button id="btn-close-sidebar" class="text-gray-400 hover:text-white p-1 cursor-pointer">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
+            <button id="btn-close-sidebar" class="text-gray-400 hover:text-white p-1 cursor-pointer">✕</button>
         </div>
         <div id="chat-list" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
     </aside>
 
     <!-- Main Container -->
     <main class="relative z-10 flex-1 flex flex-col max-w-4xl w-full mx-auto p-4 overflow-hidden">
-        <div id="api-key-banner" class="hidden mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex justify-between items-center">
+        <div id="api-key-banner" class="hidden mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex justify-between items-center shrink-0">
             <span>⚠️ API ключ не задан. Нажмите на шестерёнку (⚙️), чтобы добавить ключ Gemini.</span>
             <button id="btn-banner-settings" class="underline ml-2 font-medium cursor-pointer">Настроить</button>
         </div>
 
-        <div id="messages-container" class="flex-1 overflow-y-auto space-y-4 pr-2 pb-24"></div>
+        <!-- Messages Area -->
+        <div id="messages-container" class="flex-1 overflow-y-auto space-y-4 pr-2 pb-4"></div>
 
-        <!-- Input Box -->
-        <div class="absolute bottom-4 left-4 right-4 max-w-4xl mx-auto">
-            <div class="glass p-2 rounded-2xl flex items-center space-x-2 shadow-2xl">
-                <textarea id="chat-input" rows="1" placeholder="Задайте вопрос Zenith AI..." class="flex-1 bg-transparent border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-0 px-3 py-2 resize-none max-h-32"></textarea>
-                <button id="btn-send" class="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center justify-center cursor-pointer">
+        <!-- Input Box Area -->
+        <div class="w-full pt-2 shrink-0">
+            <div class="glass-card p-2 rounded-2xl flex items-center space-x-2 shadow-2xl border border-white/10">
+                <textarea id="chat-input" rows="1" placeholder="Задайте вопрос Zenith AI..." class="flex-1 bg-transparent border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-0 px-3 py-2 resize-none max-h-32 text-sm"></textarea>
+                <button id="btn-send" class="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center justify-center cursor-pointer shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                 </button>
             </div>
-            <div class="text-center text-xs text-gray-500 mt-2">Zenith AI автоматически распознаёт язык вашего сообщения.</div>
+            <div class="text-center text-[10px] text-gray-500 mt-1">Zenith AI автоматически распознаёт язык вашего сообщения.</div>
         </div>
     </main>
 
     <!-- Modal Settings -->
     <div id="modal-settings" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
-        <div class="glass max-w-md w-full p-6 rounded-2xl space-y-4">
+        <div class="glass max-w-md w-full p-6 rounded-2xl space-y-4 bg-gray-900 border border-gray-700">
             <div class="flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-white">Настройки Zenith AI</h3>
                 <button id="btn-close-modal" class="text-gray-400 hover:text-white cursor-pointer">✕</button>
@@ -96,172 +92,4 @@
             
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-1">Gemini API Key</label>
-                <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
-                <p class="text-xs text-gray-400 mt-1">Ключ можно скопировать в <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 underline">Google AI Studio</a>.</p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Ваше имя</label>
-                <input type="text" id="input-username" value="Jasur" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
-            </div>
-
-            <div class="flex justify-end space-x-2 pt-2">
-                <button id="btn-cancel-settings" class="px-4 py-2 rounded-lg text-gray-300 hover:bg-white/5 cursor-pointer">Отмена</button>
-                <button id="btn-save-settings" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-lg shadow-indigo-600/30 cursor-pointer">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyBRj6tdapebJe7ZnH6Hnmwt6FgnfeHnIPU",
-            authDomain: "zenith-ai-1fcc6.firebaseapp.com",
-            projectId: "zenith-ai-1fcc6",
-            storageBucket: "zenith-ai-1fcc6.firebasestorage.app",
-            messagingSenderId: "711508582496",
-            appId: "1:711508582496:web:fb1519ee8f884fedd92305"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-
-        let apiKey = localStorage.getItem('zenith_api_key') || '';
-        let userName = localStorage.getItem('zenith_username') || 'Jasur';
-        
-        let chats = [];
-        try {
-            chats = JSON.parse(localStorage.getItem('zenith_chats') || '[]');
-        } catch(e) {
-            chats = [];
-        }
-        if (!Array.isArray(chats)) chats = [];
-        
-        let activeChatId = chats.length ? chats[0].id : null;
-
-        const messagesContainer = document.getElementById('messages-container');
-        const chatInput = document.getElementById('chat-input');
-        const btnSend = document.getElementById('btn-send');
-        const chatList = document.getElementById('chat-list');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const apiKeyBanner = document.getElementById('api-key-banner');
-        const modalSettings = document.getElementById('modal-settings');
-        const btnLoginGoogle = document.getElementById('btn-login-google');
-
-        document.getElementById('input-api-key').value = apiKey;
-        document.getElementById('input-username').value = userName;
-        document.getElementById('user-badge').innerText = userName;
-
-        if (!apiKey) apiKeyBanner.classList.remove('hidden');
-
-        btnLoginGoogle.onclick = () => {
-            if (auth.currentUser) {
-                auth.signOut().then(() => alert('Вы вышли из системы.'));
-            } else {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                auth.signInWithPopup(provider).catch(e => alert(e.message));
-            }
-        };
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                btnLoginGoogle.innerHTML = `<span>Выйти (${user.displayName || 'Аккаунт'})</span>`;
-                userName = user.displayName || 'Jasur';
-                document.getElementById('user-badge').innerText = userName;
-            } else {
-                btnLoginGoogle.innerHTML = `<span>Войти через Google</span>`;
-            }
-        });
-
-        if (!chats.length) {
-            createNewChat();
-        } else {
-            renderChatList();
-            renderMessages();
-        }
-
-        function createNewChat() {
-            const newChat = {
-                id: Date.now().toString(),
-                title: 'Новый чат',
-                messages: [{
-                    role: 'assistant',
-                    content: `Здравствуйте, ${userName}! Чем я могу помочь вам сегодня?`
-                }]
-            };
-            chats.unshift(newChat);
-            activeChatId = newChat.id;
-            saveChats();
-            renderChatList();
-            renderMessages();
-        }
-
-        function saveChats() {
-            localStorage.setItem('zenith_chats', JSON.stringify(chats));
-        }
-
-        function getCurrentChat() {
-            let chat = chats.find(c => c.id === activeChatId);
-            if (!chat && chats.length > 0) {
-                activeChatId = chats[0].id;
-                chat = chats[0];
-            }
-            if (!chat) {
-                createNewChat();
-                chat = chats[0];
-            }
-            return chat;
-        }
-
-        function renderChatList() {
-            chatList.innerHTML = '';
-            chats.forEach(chat => {
-                const isActive = chat.id === activeChatId;
-                const div = document.createElement('div');
-                div.className = `p-3 rounded-xl cursor-pointer flex justify-between items-center transition ${isActive ? 'bg-indigo-600/30 border border-indigo-500/40 text-white' : 'hover:bg-white/5 text-gray-400'}`;
-                
-                const span = document.createElement('span');
-                span.className = 'truncate text-sm font-medium pr-2 flex-1';
-                span.innerText = chat.title || 'Чат';
-                span.onclick = () => {
-                    activeChatId = chat.id;
-                    renderChatList();
-                    renderMessages();
-                    closeSidebar();
-                };
-
-                const delBtn = document.createElement('button');
-                delBtn.className = 'text-gray-500 hover:text-red-400 p-1 cursor-pointer';
-                delBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
-                delBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    deleteChat(chat.id);
-                };
-
-                div.appendChild(span);
-                div.appendChild(delBtn);
-                chatList.appendChild(div);
-            });
-        }
-
-        function deleteChat(id) {
-            chats = chats.filter(c => c.id !== id);
-            if (!chats.length) {
-                createNewChat();
-            } else {
-                if (activeChatId === id) {
-                    activeChatId = chats[0].id;
-                }
-                saveChats();
-                renderChatList();
-                renderMessages();
-            }
-        }
-
-        function renderMessages() {
-            messagesContainer.innerHTML = '';
-            const chat = getCurrentChat();
-            if (!chat || !chat.messages) return;
-
-            chat.messages.forEach(msg => {
-                const isUser = msg.role === 'user';
-                const wrapper = document.createElement('div');
+                <input type="password" id="input-api-key" placeholder="AIzaSy..." class="
