@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zenith AI</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Zenith AI — умный ИИ-помощник с поддержкой нескольких чатов и автоопределением языков.">
+    <meta name="keywords" content="Zenith AI, ИИ чат, Gemini AI, Jasur, персональный ассистент">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
+        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-card { background: rgba(31, 41, 55, 0.5); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Background Canvas -->
+    <canvas id="bg-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-40"></canvas>
+
+    <!-- Header -->
+    <header class="relative z-10 glass px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <button id="btn-sidebar" class="text-gray-300 hover:text-white p-1 cursor-pointer">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">Z</div>
+                <span class="font-bold text-lg tracking-wide bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Zenith AI</span>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <button id="btn-login-google" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition cursor-pointer flex items-center space-x-1">
+                <span>Войти через Google</span>
+            </button>
+            <button id="btn-new-chat" class="p-2 rounded-lg glass-card hover:bg-white/10 transition text-gray-300 hover:text-white cursor-pointer" title="Новый чат">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </button>
+            <button id="btn-settings" class="p-2 rounded-lg glass-card hover:bg-white/10 transition text-gray-300 hover:text-white cursor-pointer" title="Настройки">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+            <div id="user-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Jasur
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 hidden cursor-pointer"></div>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-0 bottom-0 w-72 glass z-30 transform -translate-x-full transition-transform duration-300 flex flex-col p-4">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="font-semibold text-gray-200">История чатов</h2>
+            <button id="btn-close-sidebar" class="text-gray-400 hover:text-white p-1 cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div id="chat-list" class="flex-1 overflow-y-auto space-y-2 pr-1"></div>
+    </aside>
+
+    <!-- Main Container -->
+    <main class="relative z-10 flex-1 flex flex-col max-w-4xl w-full mx-auto p-4 overflow-hidden">
+        <div id="api-key-banner" class="hidden mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex justify-between items-center">
+            <span>⚠️ API ключ не задан. Нажмите на шестерёнку (⚙️), чтобы добавить ключ Gemini.</span>
+            <button id="btn-banner-settings" class="underline ml-2 font-medium cursor-pointer">Настроить</button>
+        </div>
+
+        <div id="messages-container" class="flex-1 overflow-y-auto space-y-4 pr-2 pb-24"></div>
+
+        <!-- Input Box -->
+        <div class="absolute bottom-4 left-4 right-4 max-w-4xl mx-auto">
+            <div class="glass p-2 rounded-2xl flex items-center space-x-2 shadow-2xl">
+                <textarea id="chat-input" rows="1" placeholder="Задайте вопрос Zenith AI..." class="flex-1 bg-transparent border-0 text-white placeholder-gray-400 focus:outline-none focus:ring-0 px-3 py-2 resize-none max-h-32"></textarea>
+                <button id="btn-send" class="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition shadow-lg shadow-indigo-600/30 flex items-center justify-center cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </div>
+            <div class="text-center text-xs text-gray-500 mt-2">Zenith AI автоматически распознаёт язык вашего сообщения.</div>
+        </div>
+    </main>
+
+    <!-- Modal Settings -->
+    <div id="modal-settings" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass max-w-md w-full p-6 rounded-2xl space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-white">Настройки Zenith AI</h3>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-white cursor-pointer">✕</button>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Gemini API Key</label>
+                <input type="password" id="input-api-key" placeholder="AIzaSy..." class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                <p class="text-xs text-gray-400 mt-1">Ключ можно получить в <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 underline">Google AI Studio</a>.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Ваше имя</label>
+                <input type="text" id="input-username" value="Jasur" class="w-full bg-gray-900/80 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-2">
+                <button id="btn-cancel-settings" class="px-4 py-2 rounded-lg text-gray-300 hover:bg-white/5 cursor-pointer">Отмена</button>
+                <button id="btn-save-settings" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium shadow-lg shadow-indigo-600/30 cursor-pointer">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBRj6tdapebJe7ZnH6Hnmwt6FgnfeHnIPU",
+            authDomain: "zenith-ai-1fcc6.firebaseapp.com",
+            projectId: "zenith-ai-1fcc6",
+            storageBucket: "zenith-ai-1fcc6.firebasestorage.app",
+            messagingSenderId: "711508582496",
+            appId: "1:711508582496:web:fb1519ee8f884fedd92305"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        let apiKey = localStorage.getItem('zenith_api_key') || '';
+        let userName = localStorage.getItem('zenith_username') || 'Jasur';
+        let chats = JSON.parse(localStorage.getItem('zenith_chats') || '[]');
+        let activeChatId = chats.length ? chats[0].id : null;
+
+        const messagesContainer = document.getElementById('messages-container');
+        const chatInput = document.getElementById('chat-input');
+        const btnSend = document.getElementById('btn-send');
+        const chatList = document.getElementById('chat-list');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const apiKeyBanner = document.getElementById('api-key-banner');
+        const modalSettings = document.getElementById('modal-settings');
+        const btnLoginGoogle = document.getElementById('btn-login-google');
+
+        document.getElementById('input-api-key').value = apiKey;
+        document.getElementById('input-username').value = userName;
+        document.getElementById('user-badge').innerText = userName;
+
+        if (!apiKey) apiKeyBanner.classList.remove('hidden');
+
+        btnLoginGoogle.onclick = () => {
+            if (auth.currentUser) {
+                auth.signOut().then(() => alert('Вы вышли из системы.'));
+            } else {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                auth.signInWithPopup(provider).catch(e => alert(e.message));
+            }
+        };
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                btnLoginGoogle.innerHTML = `<span>Выйти (${user.displayName || 'Аккаунт'})</span>`;
+                userName = user.displayName || 'Jasur';
+                document.getElementById('user-badge').innerText = userName;
+            } else {
+                btnLoginGoogle.innerHTML = `<span>Войти через Google</span>`;
+            }
+        });
+
+        if (!chats.length) {
+            createNewChat();
+        } else {
+            renderChatList();
+            renderMessages();
+        }
+
+        function createNewChat() {
+            const newChat = {
+                id: Date.now().toString(),
+                title: 'Новый чат',
+                messages: [{
+                    role: 'assistant',
+                    content: `Здравствуйте, ${userName}! Чем я могу помочь вам сегодня?`
+                }]
+            };
+            chats.unshift(newChat);
+            activeChatId = newChat.id;
+            saveChats();
+            renderChatList();
+            renderMessages();
+        }
+
+        function saveChats() {
+            localStorage.setItem('zenith_chats', JSON.stringify(chats));
+        }
+
+        function getCurrentChat() {
+            return chats.find(c => c.id === activeChatId) || chats[0];
+        }
+
+        function renderChatList() {
+            chatList.innerHTML = '';
+            chats.forEach(chat => {
+                const isActive = chat.id === activeChatId;
+                const div = document.createElement('div');
+                div.className = `p-3 rounded-xl cursor-pointer flex justify-between items-center transition ${isActive ? 'bg-indigo-600/30 border border-indigo-500/40 text-white' : 'hover:bg-white/5 text-gray-400'}`;
+                
+                const span = document.createElement('span');
+                span.className = 'truncate text-sm font-medium pr-2 flex-1';
+                span.innerText = chat.title;
+                span.onclick = () => {
+                    activeChatId = chat.id;
+                    renderChatList();
+                    renderMessages();
+                    closeSidebar();
+                };
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'text-gray-500 hover:text-red-400 p-1 cursor-pointer';
+                delBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteChat(chat.id);
+                };
+
+                div.appendChild(span);
+                div.appendChild(delBtn);
+                chatList.appendChild(div);
+            });
+        }
+
+        function deleteChat(id) {
+            chats = chats.filter(c => c.id !== id);
+            if (!chats.length) {
+                createNewChat();
+            } else {
+                if (activeChatId === id) {
+                    activeChatId = chats[0].id;
+                }
+                saveChats();
+                renderChatList();
+                renderMessages();
+            }
+        }
+
+        function renderMessages() {
+            messagesContainer.innerHTML = '';
+            const chat = getCurrentChat();
+            if (!chat) return;
+
+            chat.messages.forEach(msg => {
+                const isUser = msg.role === 'user';
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+                
+                const bubble = document.createElement('div');
+                bubble.className = `max-w-[85%] rounded-2xl px-4 py-3 ${isUser ? 'bg-indigo-600 text-white rounded-br-none shadow-lg shadow-indigo-600/20' : 'glass-card text-gray-100 rounded-bl-none'}`;
+                bubble.innerHTML = marked.parse(msg.content);
+
+                wrapper.appendChild(bubble);
+                messagesContainer.appendChild(wrapper);
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            if (!apiKey) {
+                alert('Пожалуйста, добавьте ваш Gemini API Key в настройках (⚙️).');
+                modalSettings.classList.remove('hidden');
+                return;
+            }
+
+            const chat = getCurrentChat();
+            if (chat.messages.length === 1 && chat.title === 'Новый чат') {
+                chat.title = text.slice(0, 25);
+            }
+
+            chat.messages.push({ role: 'user', content: text });
+            chatInput.value = '';
+            renderMessages();
+            saveChats();
+            renderChatList();
+
+            const loadingWrapper = document.createElement('div');
+            loadingWrapper.className = 'flex justify-start';
+            loadingWrapper.innerHTML = `<div class="glass-card text-gray-400 rounded-2xl rounded-bl-none px-4 py-3 text-sm animate-pulse">Zenith AI думает...</div>`;
+            messagesContainer.appendChild(loadingWrapper);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gemini-3.8-flash",
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are Zenith AI, a humble, smart, polite assistant. CRITICAL: Automatically detect the language of the user's input and reply EXCLUSIVELY in that exact same language. User Name: ${userName}.`
+                            },
+                            {
+                                role: 'user',
+                                content: text
+                            }
+                        ]
+                    })
+                });
+
+                const data = await response.json();
+                messagesContainer.removeChild(loadingWrapper);
+
+                if (data.choices && data.choices[0].message.content) {
+                    const aiReply = data.choices[0].message.content;
+                    chat.messages.push({ role: 'assistant', content: aiReply });
+                } else {
+                    chat.messages.push({ role: 'assistant', content: 'Ошибка ответа API: ' + (data.error?.message || 'Неверный ключ.') });
+                }
+            } catch (e) {
+                messagesContainer.removeChild(loadingWrapper);
+                chat.messages.push({ role: 'assistant', content: 'Ошибка сети: проверьте подключение.' });
+            }
+
+            saveChats();
+            renderMessages();
+            renderChatList();
+        }
+
+        document.getElementById('btn-sidebar').onclick = () => {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarOverlay.classList.remove('hidden');
+        };
+
+        const closeSidebar = () => {
+            sidebar.classList.add('-translate-x-full');
+            sidebarOverlay.classList.add('hidden');
+        };
+
+        document.getElementById('btn-close-sidebar').onclick = closeSidebar;
+        sidebarOverlay.onclick = closeSidebar;
+        document.getElementById('btn-new-chat').onclick = () => createNewChat();
+
+        document.getElementById('btn-settings').onclick = () => modalSettings.classList.remove('hidden');
+        document.getElementById('btn-banner-settings').onclick = () => modalSettings.classList.remove('hidden');
+        document.getElementById('btn-close-modal').onclick = () => modalSettings.classList.add('hidden');
+        document.getElementById('btn-cancel-settings').onclick = () => modalSettings.classList.add('hidden');
+
+        document.getElementById('btn-save-settings').onclick = () => {
+            apiKey = document.getElementById('input-api-key').value.trim();
+            userName = document.getElementById('input-username').value.trim() || 'Jasur';
+            
+            localStorage.setItem('zenith_api_key', apiKey);
+            localStorage.setItem('zenith_username', userName);
+
+            document.getElementById('user-badge').innerText = userName;
+            if (apiKey) apiKeyBanner.classList.add('hidden');
+
+            modalSettings.classList.add('hidden');
+        };
+
+        btnSend.onclick = sendMessage;
+        chatInput.onkeydown = (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        };
+
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resizeCanvas();
+        window.onresize = resizeCanvas;
+
+        const particles = Array.from({ length: 40 }, () => ({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 2 + 1,
+            dx: (Math.random() - 0.5) * 0.5,
+            dy: (Math.random() - 0.5) * 0.5
+        }));
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(129, 140, 248, 0.4)';
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                p.x += p.dx; p.y += p.dy;
+                if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+            });
+            requestAnimationFrame(animateCanvas);
+        }
+        animateCanvas();
+    </script>
+</body>
+</html>
